@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: sherlock-backend:local
+          image: localhost:5000/sherlock-backend:v1
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
