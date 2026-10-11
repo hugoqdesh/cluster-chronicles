@@ -1,0 +1,51 @@
+kind: DaemonSet
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 100Mi
+  limits:
+    cpu: 300m
+    memory: 300Mi
+
+env:
+  - name: ELASTIC_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: elastic-credentials
+        key: elastic-password
+
+serviceMonitor:
+  enabled: true
+
+config:
+  inputs: |
+    [INPUT]
+        Name tail
+        Path /var/log/containers/*.log
+        multiline.parser docker, cri
+        Tag kube.*
+        Mem_Buf_Limit 5MB
+        Skip_Long_Lines On
+        Read_From_Head Off
+
+  filters: |
+    [FILTER]
+        Name kubernetes
+        Match kube.*
+        Merge_Log On
+        Keep_Log On
+
+  outputs: |
+    [OUTPUT]
+        Name es
+        Match kube.*
+        Host elasticsearch.observability.svc.cluster.local
+        Port 9200
+        HTTP_User elastic
+        HTTP_Passwd ${ELASTIC_PASSWORD}
+        Logstash_Format On
+        Logstash_Prefix kubernetes
+        Suppress_Type_Name On
+        Replace_Dots On
+        Retry_Limit False
