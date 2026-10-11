@@ -1,5 +1,4 @@
 controller:
-  installPlugins: []
   resources:
     requests:
       cpu: 250m

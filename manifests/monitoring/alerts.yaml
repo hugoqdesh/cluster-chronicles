@@ -1,0 +1,78 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cluster-chronicles-alerts
+  namespace: observability
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: cluster-chronicles
+      rules:
+        - alert: NodeCPUHigh
+          expr: 100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m]))) > 80
+          for: 5m
+          labels:
+            severity: warning
+            team: cluster-chronicles
+          annotations:
+            summary: Node CPU usage is above 80%
+        - alert: NodeDiskSpaceLow
+          # shortcut: /data is this Minikube node's disk; change the mountpoint on other clusters.
+          expr: 100 * node_filesystem_avail_bytes{mountpoint="/data",fstype="ext4"} / node_filesystem_size_bytes{mountpoint="/data",fstype="ext4"} < 20
+          labels:
+            severity: warning
+            team: cluster-chronicles
+          annotations:
+            summary: Node disk has less than 20% available space
+        - alert: NodeMemoryHigh
+          expr: 100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) > 90
+          for: 5m
+          labels:
+            severity: warning
+            team: cluster-chronicles
+          annotations:
+            summary: Node memory usage is above 90%
+        - alert: PodRestartsHigh
+          expr: increase(kube_pod_container_status_restarts_total[15m]) > 3
+          labels:
+            severity: warning
+            team: cluster-chronicles
+          annotations:
+            summary: A container restarted more than three times in 15 minutes
+        - alert: ContainerMemoryHigh
+          expr: container_memory_working_set_bytes{container!="",image!=""} / on(namespace,pod,container) group_left() (kube_pod_container_resource_limits{resource="memory",unit="byte"} > 0) > 0.8
+          labels:
+            severity: warning
+            team: cluster-chronicles
+          annotations:
+            summary: Container memory usage exceeds 80% of its limit
+        - alert: PodPendingTooLong
+          expr: kube_pod_status_phase{phase="Pending"} == 1
+          for: 5m
+          labels:
+            severity: warning
+            team: cluster-chronicles
+          annotations:
+            summary: Pod has been Pending for more than five minutes
+        - alert: APIServerUnavailable
+          expr: up{job="apiserver"} == 0 or absent(up{job="apiserver"})
+          labels:
+            severity: critical
+            team: cluster-chronicles
+          annotations:
+            summary: Kubernetes API server cannot be scraped
+        - alert: ElasticsearchUnhealthy
+          expr: elasticsearch_cluster_health_status{color=~"yellow|red"} == 1
+          labels:
+            severity: warning
+            team: cluster-chronicles
+          annotations:
+            summary: Elasticsearch cluster health is yellow or red
+        - alert: FluentBitCollectionErrors
+          expr: sum by (instance) (increase(fluentbit_output_errors_total[5m]) + increase(fluentbit_output_dropped_records_total[5m]) + increase(fluentbit_output_retries_failed_total[5m])) > 0 or max by (instance) (fluentbit_input_ingestion_paused) > 0 or max by (instance) (fluentbit_input_storage_overlimit) > 0 or up{job="fluent-bit"} == 0
+          labels:
+            severity: warning
+            team: cluster-chronicles
+          annotations:
+            summary: Fluent Bit is unavailable or failed to send logs

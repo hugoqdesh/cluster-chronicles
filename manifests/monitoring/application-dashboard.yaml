@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sherlock-application-dashboard
+  namespace: observability
+  labels:
+    grafana_dashboard: "1"
+data:
+  sherlock-application.json: |
+    {
+      "uid": "sherlock-application",
+      "title": "Sherlock Application",
+      "tags": ["sherlock-app"],
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+      "time": {"from": "now-1h", "to": "now"},
+      "panels": [
+        {
+          "id": 1,
+          "title": "Requests per second",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "targets": [{"expr": "sum(rate(app_http_requests_total{namespace=\"sherlock-app\"}[5m]))", "refId": "A"}]
+        },
+        {
+          "id": 2,
+          "title": "95th percentile request duration",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "s"}},
+          "targets": [{"expr": "histogram_quantile(0.95, sum by (le) (rate(app_http_request_duration_seconds_bucket{namespace=\"sherlock-app\"}[5m])))", "refId": "A"}]
+        },
+        {
+          "id": 3,
+          "title": "HTTP 5xx per second",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "targets": [{"expr": "sum(rate(app_http_requests_total{namespace=\"sherlock-app\",status_code=~\"5..\"}[5m])) or vector(0)", "refId": "A"}]
+        },
+        {
+          "id": 4,
+          "title": "Health checks per second",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "targets": [{"expr": "sum(rate(app_health_checks_total{namespace=\"sherlock-app\"}[5m]))", "refId": "A"}]
+        }
+      ]
+    }

@@ -55,9 +55,13 @@ spec:
 set -eu
 test -s /source/backend/Dockerfile
 test -s /source/backend/package-lock.json
+mkdir -p /home/jenkins/agent/backend-src
+cp -L /source/backend/Dockerfile /source/backend/package.json \
+  /source/backend/package-lock.json /source/backend/server.js \
+  /source/backend/.dockerignore /home/jenkins/agent/backend-src/
 /kaniko/executor \
-  --context "dir:///source/backend" \
-  --dockerfile "/source/backend/Dockerfile" \
+  --context "dir:///home/jenkins/agent/backend-src" \
+  --dockerfile "/home/jenkins/agent/backend-src/Dockerfile" \
   --destination "registry.kube-system.svc.cluster.local:80/sherlock-backend:${IMAGE_TAG}" \
   --insecure
 '''
@@ -72,9 +76,13 @@ test -s /source/backend/package-lock.json
 set -eu
 test -s /source/frontend/Dockerfile
 test -s /source/frontend/index.html
+mkdir -p /home/jenkins/agent/frontend-src
+cp -L /source/frontend/Dockerfile /source/frontend/index.html \
+  /source/frontend/nginx.conf /source/frontend/.dockerignore \
+  /home/jenkins/agent/frontend-src/
 /kaniko/executor \
-  --context "dir:///source/frontend" \
-  --dockerfile "/source/frontend/Dockerfile" \
+  --context "dir:///home/jenkins/agent/frontend-src" \
+  --dockerfile "/home/jenkins/agent/frontend-src/Dockerfile" \
   --destination "registry.kube-system.svc.cluster.local:80/sherlock-frontend:${IMAGE_TAG}" \
   --insecure
 '''

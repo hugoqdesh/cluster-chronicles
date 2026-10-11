@@ -3,6 +3,8 @@ kind: Service
 metadata:
   name: backend
   namespace: sherlock-app
+  labels:
+    app: backend
 spec:
   type: ClusterIP
   selector:

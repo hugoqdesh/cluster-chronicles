@@ -1,0 +1,26 @@
+es:
+  uri: http://elasticsearch.observability.svc.cluster.local:9200
+  all: false
+  indices: false
+  indices_settings: false
+  indices_mappings: false
+  shards: false
+  snapshots: false
+
+env:
+  ES_USERNAME: elastic
+extraEnvSecrets:
+  ES_PASSWORD:
+    secret: elastic-credentials
+    key: elastic-password
+
+serviceMonitor:
+  enabled: true
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
