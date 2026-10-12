@@ -122,8 +122,6 @@ Then open:
 
 In Kibana, open the main menu (**☰**) and choose **Stack Management → Saved Objects**. Click **Import**, select `manifests/logging/kibana-views.ndjson` from the project folder on your computer, then click **Import** to confirm.
 
-Kibana Saved Objects should contain the **Kubernetes logs** data view and these searches: **Cluster system logs**, **Sherlock app logs**, and **Backend container logs**. Open a search there to view matching logs.
-
 Verify the app route, workloads, storage, and log retention policy:
 
 ```bash
