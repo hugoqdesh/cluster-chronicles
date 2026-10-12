@@ -81,6 +81,19 @@ Minikube's default StorageClass dynamically provisions the PVCs used by Jenkins,
 
 ## Open and verify
 
+For the Sherlock app URL to resolve, add this entry to your system's hosts file:
+
+| System         | How to edit the hosts file                                                                                                  |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| macOS or Linux | Edit `/etc/hosts` as an administrator (for example, run `sudo nano /etc/hosts`).                                            |
+| Windows        | Open Notepad as Administrator, then open `C:\Windows\System32\drivers\etc\hosts` (choose **All files** in the Open dialog). |
+
+Add this line on a new row and save the file:
+
+```text
+127.0.0.1 sherlock.local
+```
+
 Run each port-forward in its own terminal:
 
 ```bash
@@ -91,7 +104,7 @@ kubectl -n observability port-forward service/kibana 15601:5601
 kubectl -n observability port-forward service/monitoring-kube-prometheus-alertmanager 19093:9093
 ```
 
-Add `127.0.0.1 sherlock.local` to `/etc/hosts`, then open:
+Then open:
 
 - App: `http://sherlock.local:18080/`
 - Jenkins: `http://localhost:18082`
@@ -99,7 +112,11 @@ Add `127.0.0.1 sherlock.local` to `/etc/hosts`, then open:
 - Kibana: `http://localhost:15601`
 - Alertmanager: `http://localhost:19093/#/alerts`
 
-In Kibana, import `manifests/logging/kibana-views.ndjson` from **Stack Management → Saved Objects → Import** to add the cluster and Sherlock log searches.
+### Import the Kibana log searches
+
+In Kibana, open the main menu (**☰**) and choose **Stack Management → Saved Objects**. Click **Import**, select `manifests/logging/kibana-views.ndjson` from the project folder on your computer, then click **Import** to confirm.
+
+After import, Saved Objects should contain the **Kubernetes logs** data view and these searches: **Cluster system logs**, **Sherlock app logs**, and **Backend container logs**. Open a search there to view matching logs.
 
 Verify the app route, workloads, and storage:
 
