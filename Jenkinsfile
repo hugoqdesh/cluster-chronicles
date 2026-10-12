@@ -102,6 +102,8 @@ kubectl -n sherlock-app set image deployment/frontend \
 
 kubectl -n sherlock-app rollout status deployment/backend --timeout=180s
 kubectl -n sherlock-app rollout status deployment/frontend --timeout=180s
+kubectl -n sherlock-app get deployments backend frontend -o wide
+kubectl -n sherlock-app get pods -o wide
 '''
         }
       }

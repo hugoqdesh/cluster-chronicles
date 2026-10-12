@@ -8,3 +8,6 @@ rules:
     resources: ["deployments"]
     resourceNames: ["backend", "frontend"]
     verbs: ["get", "patch", "update", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
