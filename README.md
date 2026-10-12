@@ -1,16 +1,85 @@
 # Cluster Chronicles
 
-Sherlock app and observability stack on a local Minikube cluster. The cluster is already installed; these are the commands for using it.
+Kubernetes migration of the Sherlock app to a local Minikube cluster, with Jenkins, persistent storage, Prometheus/Grafana, and Elasticsearch/Fluent Bit/Kibana.
 
-## Start
+## Requirements
+
+Docker, Minikube, `kubectl`, Helm, and `crane` (used by `scripts/push-images.sh`). Start Docker before Minikube.
+
+## Install
+
+Start the cluster with the addons used by the manifests:
 
 ```bash
-minikube start -p cluster-chronicles
+minikube start -p cluster-chronicles --cpus=6 --memory=8192 --addons=ingress,metrics-server,registry
 kubectl config use-context cluster-chronicles
-kubectl get pods -A
 ```
 
-## Open
+Add the Helm repositories and create the project namespaces:
+
+```bash
+helm repo add jenkins https://charts.jenkins.io
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo add fluent https://fluent.github.io/helm-charts
+helm repo update
+
+kubectl apply -f manifests/namespaces/namespaces.yaml
+```
+
+Create the Elasticsearch credentials before deploying logging components. Set the `elastic` password to the same value used by Elasticsearch, and set `kibana-system-password` to the password configured for Elasticsearch's `kibana_system` user:
+
+```bash
+kubectl -n observability create secret generic elastic-credentials \
+  --from-literal=elastic-password='<elastic-password>' \
+  --from-literal=kibana-system-password='<kibana-system-password>' \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
+
+Install Jenkins, monitoring, and Fluent Bit, then apply their project configuration:
+
+```bash
+kubectl apply -f manifests/cicd/service-account.yaml
+helm upgrade --install jenkins jenkins/jenkins -n cicd -f manifests/cicd/values.yaml
+kubectl apply -f manifests/cicd/deployment-role.yaml -f manifests/cicd/deployment-role-binding.yaml
+
+helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
+  -n observability -f manifests/monitoring/values.yaml
+kubectl apply -f manifests/monitoring/application-dashboard.yaml \
+  -f manifests/monitoring/backend-servicemonitor.yaml \
+  -f manifests/monitoring/alerts.yaml \
+  -f manifests/monitoring/alert-receiver.yaml
+
+kubectl apply -f manifests/logging/elasticsearch.yaml
+kubectl -n observability rollout status statefulset/elasticsearch --timeout=5m
+kubectl -n observability exec statefulset/elasticsearch -- bin/elasticsearch-reset-password -u kibana_system -i
+kubectl apply -f manifests/logging/kibana.yaml
+
+helm upgrade --install fluent-bit fluent/fluent-bit \
+  -n observability -f manifests/logging/fluent-bit-values.yaml
+helm upgrade --install elasticsearch-exporter prometheus-community/prometheus-elasticsearch-exporter \
+  -n observability -f manifests/monitoring/elasticsearch-exporter-values.yaml
+```
+
+When prompted, enter the same `kibana-system-password` value stored in the Secret.
+
+The Jenkins agent pod reads its build inputs from ConfigMaps in the `cicd` namespace. Create or refresh them after changing app source:
+
+```bash
+./scripts/sync-jenkins-source.sh
+```
+
+Build and publish the initial app images, then deploy the app resources:
+
+```bash
+./scripts/push-images.sh
+kubectl apply -f manifests/backend -f manifests/frontend -f manifests/ingress
+```
+
+Create a Jenkins Pipeline job named `sherlock-app` using this repository's `Jenkinsfile`, then run it to build and deploy updated images. Jenkins pushes through the in-cluster registry service; Minikube pulls the published images through `localhost:5000`.
+
+Minikube's default StorageClass dynamically provisions the PVCs used by Jenkins, Prometheus, Grafana, and Elasticsearch. The storage choices are documented in [manifests/storage/README.md](manifests/storage/README.md); check claims with `kubectl get pvc -A`.
+
+## Open and verify
 
 Run each port-forward in its own terminal:
 
@@ -22,16 +91,20 @@ kubectl -n observability port-forward service/kibana 15601:5601
 kubectl -n observability port-forward service/monitoring-kube-prometheus-alertmanager 19093:9093
 ```
 
-- App: `http://sherlock.local:18080/` (map `sherlock.local` to `127.0.0.1` in `/etc/hosts`).
-- Jenkins: `http://localhost:18082` → run the `sherlock-app` job.
-- Grafana: `http://localhost:13000` → cluster, pod, and Sherlock Application dashboards.
-- Kibana: `http://localhost:15601` → Sherlock app logs.
-- Alertmanager: `http://localhost:19093/#/alerts`.
+Add `127.0.0.1 sherlock.local` to `/etc/hosts`, then open:
 
-## Check
+- App: `http://sherlock.local:18080/`
+- Jenkins: `http://localhost:18082`
+- Grafana: `http://localhost:13000`
+- Kibana: `http://localhost:15601`
+- Alertmanager: `http://localhost:19093/#/alerts`
+
+In Kibana, import `manifests/logging/kibana-views.ndjson` from **Stack Management → Saved Objects → Import** to add the cluster and Sherlock log searches.
+
+Verify the app route, workloads, and storage:
 
 ```bash
 curl -H 'Host: sherlock.local' http://127.0.0.1:18080/api/health
+kubectl -n sherlock-app get deployments,pods,services
 kubectl get pvc -A
-kubectl -n sherlock-app get deployments
 ```
