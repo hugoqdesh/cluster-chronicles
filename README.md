@@ -11,9 +11,11 @@ Docker, Minikube, `kubectl`, Helm, and `crane` (used by `scripts/push-images.sh`
 Start the cluster with the addons used by the manifests:
 
 ```bash
-minikube start -p cluster-chronicles --cpus=6 --memory=8192 --addons=ingress,metrics-server,registry
+minikube start -p cluster-chronicles --cpus=6 --memory=8192 --cni=calico --addons=ingress,metrics-server,registry
 kubectl config use-context cluster-chronicles
 ```
+
+Calico enforces the NetworkPolicies below. A cluster created with Minikube's default CNI does not enforce them; use Calico when creating the cluster.
 
 Add the Helm repositories and create the project namespaces:
 
@@ -73,6 +75,7 @@ Build and publish the initial app images, then deploy the app resources:
 ```bash
 ./scripts/push-images.sh
 kubectl apply -f manifests/backend -f manifests/frontend -f manifests/ingress
+kubectl apply -f manifests/networking/network-policies.yaml
 ```
 
 Create a Jenkins Pipeline job named `sherlock-app` using this repository's `Jenkinsfile`, then run it to build and deploy updated images. Jenkins pushes through the in-cluster registry service; Minikube pulls the published images through `localhost:5000`.
