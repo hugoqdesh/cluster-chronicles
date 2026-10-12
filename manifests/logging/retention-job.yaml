@@ -1,0 +1,35 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: elasticsearch-log-retention
+  namespace: observability
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: configure-retention
+          image: docker.elastic.co/elasticsearch/elasticsearch:8.19.23
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              es=http://elasticsearch:9200
+              auth="elastic:${ELASTIC_PASSWORD}"
+              until curl -fsS -u "$auth" "$es/_cat/indices/kubernetes-*?h=index" | grep -q .; do sleep 5; done
+              curl -fsS -u "$auth" -X PUT "$es/_ilm/policy/kubernetes-logs-retention" \
+                -H 'Content-Type: application/json' \
+                --data-binary '{"policy":{"phases":{"delete":{"min_age":"30d","actions":{"delete":{}}}}}}'
+              curl -fsS -u "$auth" -X PUT "$es/_index_template/kubernetes-logs-retention" \
+                -H 'Content-Type: application/json' \
+                --data-binary '{"index_patterns":["kubernetes-*"],"priority":100,"template":{"settings":{"index.lifecycle.name":"kubernetes-logs-retention"}}}'
+              curl -fsS -u "$auth" -X PUT "$es/kubernetes-*/_settings" \
+                -H 'Content-Type: application/json' \
+                --data-binary '{"index.lifecycle.name":"kubernetes-logs-retention"}'
+          env:
+            - name: ELASTIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: elastic-credentials
+                  key: elastic-password

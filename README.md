@@ -11,7 +11,10 @@ Docker, Minikube, `kubectl`, Helm, and `crane` (used by `scripts/push-images.sh`
 Start the cluster with the addons used by the manifests:
 
 ```bash
-minikube start -p cluster-chronicles --cpus=6 --memory=8192 --cni=calico --addons=ingress,metrics-server,registry
+minikube start -p cluster-chronicles --cpus=6 --memory=8192 --cni=calico \
+  --extra-config=kubelet.container-log-max-size=10Mi \
+  --extra-config=kubelet.container-log-max-files=5 \
+  --addons=ingress,metrics-server,registry
 kubectl config use-context cluster-chronicles
 ```
 
@@ -61,6 +64,7 @@ kubectl apply -f manifests/logging/kibana.yaml
 
 helm upgrade --install fluent-bit fluent/fluent-bit \
   -n observability -f manifests/logging/fluent-bit-values.yaml
+kubectl apply -f manifests/logging/retention-job.yaml
 helm upgrade --install elasticsearch-exporter prometheus-community/prometheus-elasticsearch-exporter \
   -n observability -f manifests/monitoring/elasticsearch-exporter-values.yaml
 ```
@@ -120,10 +124,12 @@ In Kibana, open the main menu (**☰**) and choose **Stack Management → Saved 
 
 Kibana Saved Objects should contain the **Kubernetes logs** data view and these searches: **Cluster system logs**, **Sherlock app logs**, and **Backend container logs**. Open a search there to view matching logs.
 
-Verify the app route, workloads, and storage:
+Verify the app route, workloads, storage, and log retention policy:
 
 ```bash
 curl -H 'Host: sherlock.local' http://127.0.0.1:18080/api/health
 kubectl -n sherlock-app get deployments,pods,services
 kubectl get pvc -A
+kubectl -n observability get job elasticsearch-log-retention
+kubectl -n observability exec statefulset/elasticsearch -- sh -c 'curl -fsS -u "elastic:$ELASTIC_PASSWORD" http://localhost:9200/_ilm/policy/kubernetes-logs-retention'
 ```
