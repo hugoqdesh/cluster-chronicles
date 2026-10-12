@@ -51,6 +51,7 @@ kubectl apply -f manifests/monitoring/application-dashboard.yaml \
   -f manifests/monitoring/alerts.yaml \
   -f manifests/monitoring/alert-receiver.yaml
 
+kubectl apply -f manifests/storage/elasticsearch-pv.yaml
 kubectl apply -f manifests/logging/elasticsearch.yaml
 kubectl -n observability rollout status statefulset/elasticsearch --timeout=5m
 kubectl -n observability exec statefulset/elasticsearch -- bin/elasticsearch-reset-password -u kibana_system -i
@@ -77,10 +78,6 @@ Build and publish the initial app images, then deploy the app resources:
 kubectl apply -f manifests/backend -f manifests/frontend -f manifests/ingress
 kubectl apply -f manifests/networking/network-policies.yaml
 ```
-
-Create a Jenkins Pipeline job named `sherlock-app` using this repository's `Jenkinsfile`, then run it to build and deploy updated images. Jenkins pushes through the in-cluster registry service; Minikube pulls the published images through `localhost:5000`.
-
-Minikube's default StorageClass dynamically provisions the PVCs used by Jenkins, Prometheus, Grafana, and Elasticsearch. The storage choices are documented in [manifests/storage/README.md](manifests/storage/README.md); check claims with `kubectl get pvc -A`.
 
 ## Open and verify
 
