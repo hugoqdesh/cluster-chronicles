@@ -47,6 +47,8 @@ kubectl apply -f manifests/cicd/deployment-role.yaml -f manifests/cicd/deploymen
 helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
   -n observability -f manifests/monitoring/values.yaml
 kubectl apply -f manifests/monitoring/application-dashboard.yaml \
+  -f manifests/monitoring/cluster-dashboard.yaml \
+  -f manifests/monitoring/pod-container-dashboard.yaml \
   -f manifests/monitoring/backend-servicemonitor.yaml \
   -f manifests/monitoring/alerts.yaml \
   -f manifests/monitoring/alert-receiver.yaml
@@ -116,7 +118,7 @@ Then open:
 
 In Kibana, open the main menu (**☰**) and choose **Stack Management → Saved Objects**. Click **Import**, select `manifests/logging/kibana-views.ndjson` from the project folder on your computer, then click **Import** to confirm.
 
-After import, Saved Objects should contain the **Kubernetes logs** data view and these searches: **Cluster system logs**, **Sherlock app logs**, and **Backend container logs**. Open a search there to view matching logs.
+Kibana Saved Objects should contain the **Kubernetes logs** data view and these searches: **Cluster system logs**, **Sherlock app logs**, and **Backend container logs**. Open a search there to view matching logs.
 
 Verify the app route, workloads, and storage:
 

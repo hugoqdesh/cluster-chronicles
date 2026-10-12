@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-dashboard
+  namespace: observability
+  labels:
+    grafana_dashboard: "1"
+data:
+  cluster.json: |
+    {
+      "uid": "cluster-overview",
+      "title": "Kubernetes Cluster",
+      "tags": ["kubernetes", "cluster"],
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+      "time": {"from": "now-1h", "to": "now"},
+      "panels": [
+        {
+          "id": 1,
+          "title": "Node CPU usage",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100}},
+          "targets": [{"expr": "100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])))", "legendFormat": "{{instance}}", "refId": "A"}]
+        },
+        {
+          "id": 2,
+          "title": "Node memory usage",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100}},
+          "targets": [{"expr": "100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)", "legendFormat": "{{instance}}", "refId": "A"}]
+        },
+        {
+          "id": 3,
+          "title": "Pods by namespace",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "targets": [{"expr": "sum by (namespace) (kube_pod_info)", "legendFormat": "{{namespace}}", "refId": "A"}]
+        },
+        {
+          "id": 4,
+          "title": "Not ready pods by namespace",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "targets": [{"expr": "sum by (namespace) (kube_pod_status_phase{phase=~\"Pending|Failed|Unknown\"})", "legendFormat": "{{namespace}}", "refId": "A"}]
+        }
+      ]
+    }
