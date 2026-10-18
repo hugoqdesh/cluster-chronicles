@@ -3,6 +3,7 @@ serviceAccount:
   name: jenkins
 
 controller:
+  overwritePlugins: true
   resources:
     requests:
       cpu: 250m

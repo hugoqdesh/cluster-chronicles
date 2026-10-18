@@ -100,8 +100,14 @@ kubectl -n sherlock-app set image deployment/backend \
 kubectl -n sherlock-app set image deployment/frontend \
   frontend="localhost:5000/sherlock-frontend:${IMAGE_TAG}"
 
-kubectl -n sherlock-app rollout status deployment/backend --timeout=180s
-kubectl -n sherlock-app rollout status deployment/frontend --timeout=180s
+for d in backend frontend; do
+  kubectl -n sherlock-app rollout status deployment/$d --timeout=180s || {
+    echo "Rollout of $d failed, rolling back both deployments" >&2
+    kubectl -n sherlock-app rollout undo deployment/backend
+    kubectl -n sherlock-app rollout undo deployment/frontend
+    exit 1
+  }
+done
 kubectl -n sherlock-app get deployments backend frontend -o wide
 kubectl -n sherlock-app get pods -o wide
 '''
