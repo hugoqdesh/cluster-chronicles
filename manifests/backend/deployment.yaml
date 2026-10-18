@@ -25,6 +25,12 @@ spec:
           ports:
             - name: http
               containerPort: 3000
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 2
+            failureThreshold: 30
           readinessProbe:
             httpGet:
               path: /health

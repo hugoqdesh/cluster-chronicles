@@ -18,6 +18,20 @@ spec:
       labels:
         app: frontend
     spec:
+      initContainers:
+        - name: wait-for-backend
+          image: busybox:1.37
+          command:
+            - sh
+            - -c
+            - until wget -q -T 2 -O /dev/null http://backend:3000/health; do sleep 2; done
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 50m
+              memory: 32Mi
       containers:
         - name: frontend
           image: localhost:5000/sherlock-frontend:v1
@@ -25,6 +39,12 @@ spec:
           ports:
             - name: http
               containerPort: 80
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 2
+            failureThreshold: 30
           readinessProbe:
             httpGet:
               path: /
